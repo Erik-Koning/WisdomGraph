@@ -27,8 +27,8 @@
     "test:pg": "WISDOM_PG_URL=${WISDOM_PG_URL:-postgres://wg:wg@localhost:55432/wg} WISDOM_PG_PGVECTOR=1 npm run test -w @mosphere/wisdom-graph -- src/postgres/integration.test.ts"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
-    "tsx": "^4.23.13",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.3"
   }
 }
