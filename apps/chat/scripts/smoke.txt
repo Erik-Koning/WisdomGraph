@@ -1,0 +1,21 @@
+# Offline smoke for the chat app: run with `npm run smoke -w @wisdom-graph/chat`.
+# The offline assistant reports how many preferences its system prompt carries,
+# so the number should be 0 on the first question and > 0 after /remember.
+
+/help
+how do I fix a typescript error about a missing property?
+/hints
+/remember please keep answers shorter, use bullet points, and no disclaimers. Call me Erik.
+/remember I prefer python for code examples
+how do I fix a typescript error about a missing property?
+/hints
+/up
+/down that was too long
+/comment no emojis please
+/explain typescript error
+/stats
+/consolidate
+/maintain
+/drain
+/prompt
+/quit

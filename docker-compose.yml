@@ -1,0 +1,21 @@
+# Postgres with pgvector for the integration suite and for running the test
+# apps against a real database:  npm run db:up   →   WISDOM_STORE=postgres
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: wisdom-graph-pg
+    environment:
+      POSTGRES_USER: wg
+      POSTGRES_PASSWORD: wg
+      POSTGRES_DB: wg
+    ports:
+      - "55432:5432"
+    volumes:
+      - wisdom-graph-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wg -d wg"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  wisdom-graph-pgdata:

@@ -1,0 +1,62 @@
+# Typecheck, test, build and smoke on every push and pull request. The
+# Postgres job runs the store's integration suite against pgvector.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run typecheck:apps
+      - run: npm run dev
+      - run: npm run smoke:apps
+      - run: npm pack --dry-run -w @mosphere/wisdom-graph
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: wg
+          POSTGRES_PASSWORD: wg
+          POSTGRES_DB: wg
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U wg -d wg"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:pg

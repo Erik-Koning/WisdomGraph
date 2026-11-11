@@ -1,0 +1,12 @@
+{
+  "name": "example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/main.mjs"
+  },
+  "dependencies": {
+    "@mosphere/wisdom-graph": "*"
+  }
+}

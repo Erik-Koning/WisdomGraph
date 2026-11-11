@@ -1,0 +1,46 @@
+# Offline smoke for the LangGraph demo. Each non-comment line is typed into the REPL.
+# `/expect <substring>` asserts on the last printed block; any miss makes the run exit 1.
+
+# 1. A greeting: no keywords, low-confidence topic → router picks "direct" → respond → END.
+hi there
+/route
+/expect mode=direct
+/expect nodes=router>respond
+
+# 2. A single-domain question: router → assist_code → END. No hints stored yet.
+how do I fix this typescript error in my function?
+/route
+/expect mode=single
+/expect synthesize=skipped
+/hints
+
+# 3. Teach a preference (offline heuristic extractor turns this into three hints).
+/remember shorter answers, bullet points, no disclaimers
+/expect processed
+
+# 4. Same question again: the specialist's preamble now carries the hints (Lane B, nodePreamble).
+how do I fix this typescript error in my function?
+/expect hint line
+/route
+/expect synthesize=skipped
+/hints
+/expect [assist_code] lane=B
+
+# 5. A multi-domain question: Send fan-out to planning + finance, in parallel, then synthesize.
+plan a trip to Lisbon and budget for it
+/route
+/expect mode=fanout
+/expect synthesize=ran
+/expect parallel=yes
+/hints
+/expect [synthesize] lane=B
+
+# 6. Feedback on the last run, then inspect the graph.
+/up
+/expect up on
+/down too long, and I asked for bullet points
+/expect down on
+/explain typescript error
+/hints
+/route
+/quit

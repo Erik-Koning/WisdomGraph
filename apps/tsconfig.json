@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["shared/src", "chat/src", "web/src", "mcp/src", "langgraph-demo/src", "simulate/src"]
+}

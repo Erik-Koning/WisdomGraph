@@ -1,0 +1,15 @@
+# Keeps the workspace's dependencies current and surfaces security advisories
+# as pull requests. One lockfile at the root covers every workspace.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    # One PR for the routine bumps, so a week's minors and patches arrive
+    # together and the test suite runs once. Majors still get their own PR.
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]

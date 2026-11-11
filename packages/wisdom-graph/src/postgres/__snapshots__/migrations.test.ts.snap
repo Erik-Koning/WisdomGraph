@@ -1,0 +1,133 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderMigrationsSql() > matches the stored snapshot (schema changes are reviewed diffs) 1`] = `
+"-- kg migration 0001_schema
+CREATE TABLE IF NOT EXISTS kg_migrations (
+  id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
+
+CREATE TABLE IF NOT EXISTS kg_subjects (
+  tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL,
+  version bigint NOT NULL DEFAULT 0,
+  slot_aliases jsonb NOT NULL DEFAULT '{}', tombstones text[] NOT NULL DEFAULT '{}',
+  last_consolidated_event text, events_since_consolidation int NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, subject_id));
+
+CREATE TABLE IF NOT EXISTS kg_nodes (
+  id text PRIMARY KEY, tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL,
+  path text NOT NULL, parent_path text, slug text NOT NULL, level smallint NOT NULL, locked boolean NOT NULL DEFAULT false,
+  title text NOT NULL, description text NOT NULL DEFAULT '',
+  keywords text[] NOT NULL DEFAULT '{}', patterns text[] NOT NULL DEFAULT '{}', agents text[] NOT NULL DEFAULT '{}',
+  properties jsonb NOT NULL DEFAULT '{}', status text NOT NULL DEFAULT 'active', merged_into text,
+  stats jsonb NOT NULL DEFAULT '{"activeHints":0}', embedding_json jsonb,
+  version int NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, subject_id, path),
+  FOREIGN KEY (tenant_id, subject_id) REFERENCES kg_subjects (tenant_id, subject_id) ON DELETE CASCADE);
+CREATE INDEX IF NOT EXISTS kg_nodes_snapshot ON kg_nodes (tenant_id, subject_id) WHERE status IN ('active','merged');
+
+CREATE TABLE IF NOT EXISTS kg_hints (
+  id text PRIMARY KEY, tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL,
+  node_id text NOT NULL, node_path text NOT NULL,
+  slot text NOT NULL, value text NOT NULL, text text NOT NULL,
+  kind text NOT NULL, lane text NOT NULL, scope text NOT NULL, agent text, client_id text,
+  source text NOT NULL, confidence real NOT NULL, priority smallint NOT NULL,
+  status text NOT NULL DEFAULT 'active', approval text NOT NULL DEFAULT 'auto', maturity text NOT NULL DEFAULT 'captured',
+  needs_review boolean NOT NULL DEFAULT false,
+  supersedes text, superseded_by text, retired_reason text,
+  reinforcements int NOT NULL DEFAULT 0, contradictions int NOT NULL DEFAULT 0, applied int NOT NULL DEFAULT 0,
+  provenance jsonb NOT NULL, version int NOT NULL DEFAULT 1,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  last_reinforced_at timestamptz NOT NULL DEFAULT now(), last_applied_at timestamptz,
+  CONSTRAINT kg_hints_scope_agent CHECK (scope <> 'agent' OR agent IS NOT NULL),
+  CONSTRAINT kg_hints_scope_client CHECK (scope <> 'client' OR client_id IS NOT NULL));
+CREATE INDEX IF NOT EXISTS kg_hints_snapshot ON kg_hints (tenant_id, subject_id, status);
+CREATE INDEX IF NOT EXISTS kg_hints_node ON kg_hints (node_id);
+CREATE UNIQUE INDEX IF NOT EXISTS kg_hints_slot_active ON kg_hints
+  (tenant_id, subject_id, node_path, slot, scope, COALESCE(agent,''), COALESCE(client_id,'')) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS kg_events (
+  tenant_id text NOT NULL DEFAULT '', id text NOT NULL, subject_id text NOT NULL, kind text NOT NULL, run_id text,
+  payload jsonb NOT NULL, status text NOT NULL DEFAULT 'pending', attempts int NOT NULL DEFAULT 0, error text,
+  lease_until timestamptz, retry_at timestamptz, proposal jsonb, result jsonb, scrubbed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id));
+CREATE INDEX IF NOT EXISTS kg_events_work ON kg_events (tenant_id, created_at) WHERE status IN ('pending','failed','processing');
+CREATE INDEX IF NOT EXISTS kg_events_run ON kg_events (tenant_id, subject_id, run_id) WHERE kind = 'turn';
+CREATE INDEX IF NOT EXISTS kg_events_subject ON kg_events (tenant_id, subject_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS kg_audit (
+  id text PRIMARY KEY, tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL, at timestamptz NOT NULL,
+  actor text NOT NULL, action text NOT NULL, hint_id text, node_path text, event_id text, detail jsonb NOT NULL DEFAULT '{}');
+CREATE INDEX IF NOT EXISTS kg_audit_subject ON kg_audit (tenant_id, subject_id, at DESC);
+"
+`;
+
+exports[`renderMigrationsSql() > matches the stored snapshot (schema changes are reviewed diffs) 2`] = `
+"-- kg migration 0001_schema
+CREATE TABLE IF NOT EXISTS kg_migrations (
+  id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
+
+CREATE TABLE IF NOT EXISTS kg_subjects (
+  tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL,
+  version bigint NOT NULL DEFAULT 0,
+  slot_aliases jsonb NOT NULL DEFAULT '{}', tombstones text[] NOT NULL DEFAULT '{}',
+  last_consolidated_event text, events_since_consolidation int NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, subject_id));
+
+CREATE TABLE IF NOT EXISTS kg_nodes (
+  id text PRIMARY KEY, tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL,
+  path text NOT NULL, parent_path text, slug text NOT NULL, level smallint NOT NULL, locked boolean NOT NULL DEFAULT false,
+  title text NOT NULL, description text NOT NULL DEFAULT '',
+  keywords text[] NOT NULL DEFAULT '{}', patterns text[] NOT NULL DEFAULT '{}', agents text[] NOT NULL DEFAULT '{}',
+  properties jsonb NOT NULL DEFAULT '{}', status text NOT NULL DEFAULT 'active', merged_into text,
+  stats jsonb NOT NULL DEFAULT '{"activeHints":0}', embedding_json jsonb,
+  version int NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, subject_id, path),
+  FOREIGN KEY (tenant_id, subject_id) REFERENCES kg_subjects (tenant_id, subject_id) ON DELETE CASCADE);
+CREATE INDEX IF NOT EXISTS kg_nodes_snapshot ON kg_nodes (tenant_id, subject_id) WHERE status IN ('active','merged');
+
+CREATE TABLE IF NOT EXISTS kg_hints (
+  id text PRIMARY KEY, tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL,
+  node_id text NOT NULL, node_path text NOT NULL,
+  slot text NOT NULL, value text NOT NULL, text text NOT NULL,
+  kind text NOT NULL, lane text NOT NULL, scope text NOT NULL, agent text, client_id text,
+  source text NOT NULL, confidence real NOT NULL, priority smallint NOT NULL,
+  status text NOT NULL DEFAULT 'active', approval text NOT NULL DEFAULT 'auto', maturity text NOT NULL DEFAULT 'captured',
+  needs_review boolean NOT NULL DEFAULT false,
+  supersedes text, superseded_by text, retired_reason text,
+  reinforcements int NOT NULL DEFAULT 0, contradictions int NOT NULL DEFAULT 0, applied int NOT NULL DEFAULT 0,
+  provenance jsonb NOT NULL, version int NOT NULL DEFAULT 1,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  last_reinforced_at timestamptz NOT NULL DEFAULT now(), last_applied_at timestamptz,
+  CONSTRAINT kg_hints_scope_agent CHECK (scope <> 'agent' OR agent IS NOT NULL),
+  CONSTRAINT kg_hints_scope_client CHECK (scope <> 'client' OR client_id IS NOT NULL));
+CREATE INDEX IF NOT EXISTS kg_hints_snapshot ON kg_hints (tenant_id, subject_id, status);
+CREATE INDEX IF NOT EXISTS kg_hints_node ON kg_hints (node_id);
+CREATE UNIQUE INDEX IF NOT EXISTS kg_hints_slot_active ON kg_hints
+  (tenant_id, subject_id, node_path, slot, scope, COALESCE(agent,''), COALESCE(client_id,'')) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS kg_events (
+  tenant_id text NOT NULL DEFAULT '', id text NOT NULL, subject_id text NOT NULL, kind text NOT NULL, run_id text,
+  payload jsonb NOT NULL, status text NOT NULL DEFAULT 'pending', attempts int NOT NULL DEFAULT 0, error text,
+  lease_until timestamptz, retry_at timestamptz, proposal jsonb, result jsonb, scrubbed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id));
+CREATE INDEX IF NOT EXISTS kg_events_work ON kg_events (tenant_id, created_at) WHERE status IN ('pending','failed','processing');
+CREATE INDEX IF NOT EXISTS kg_events_run ON kg_events (tenant_id, subject_id, run_id) WHERE kind = 'turn';
+CREATE INDEX IF NOT EXISTS kg_events_subject ON kg_events (tenant_id, subject_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS kg_audit (
+  id text PRIMARY KEY, tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL, at timestamptz NOT NULL,
+  actor text NOT NULL, action text NOT NULL, hint_id text, node_path text, event_id text, detail jsonb NOT NULL DEFAULT '{}');
+CREATE INDEX IF NOT EXISTS kg_audit_subject ON kg_audit (tenant_id, subject_id, at DESC);
+
+-- kg migration 0002_pgvector (requires pgvector)
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE IF NOT EXISTS kg_node_vectors (
+  node_id text PRIMARY KEY REFERENCES kg_nodes (id) ON DELETE CASCADE,
+  tenant_id text NOT NULL DEFAULT '', subject_id text NOT NULL, vec vector(1536) NOT NULL);
+CREATE INDEX IF NOT EXISTS kg_node_vectors_hnsw ON kg_node_vectors USING hnsw (vec vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS kg_node_vectors_subject ON kg_node_vectors (tenant_id, subject_id);
+"
+`;

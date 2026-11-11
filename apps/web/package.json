@@ -1,0 +1,13 @@
+{
+  "name": "@wisdom-graph/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "smoke": "WISDOM_OFFLINE=1 WISDOM_STORE_FILE=.wisdom/smoke-web.json tsx src/smoke.ts"
+  },
+  "dependencies": {
+    "@wisdom-graph/harness": "*"
+  }
+}

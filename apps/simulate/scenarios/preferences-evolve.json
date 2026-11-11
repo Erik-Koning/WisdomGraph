@@ -1,0 +1,68 @@
+{
+  "name": "preferences-evolve",
+  "$comment": "Capture → reinforce → promote → supersede → decay/retire. Feedback comments go through the offline heuristic (no scripted proposal needed); the contradiction is scripted so the exact slot/value is under test.",
+  "startAt": "2026-01-01T09:00:00Z",
+  "steps": [
+    { "note": "A plain coding question. Nothing preference-shaped, so the triage gate keeps the extractor out." },
+    { "turn": { "user": "How do I fix this TypeScript error: Property 'foo' does not exist on type 'Bar'?", "assistant": "Here is a long, exhaustive explanation of structural typing...", "agentsUsed": ["assist_code"] } },
+    { "expect": { "activeHints": 0 } },
+
+    { "note": "Explicit feedback on that answer: two preferences in one comment (format.length=short, format.lists=bullets)." },
+    { "feedback": { "signal": "comment", "text": "shorter answers, bullet points" } },
+    { "expect": { "activeHints": 2, "hintStatus": { "short": "active", "bullet": "active" }, "maturity": { "short": "captured", "bullet": "captured" } } },
+
+    { "note": "The same preference restated later: same slot + same value on the same node → reinforce, not a second hint." },
+    { "turn": { "user": "Explain what a closure is in JavaScript.", "assistant": "A closure is...", "agentsUsed": ["assist_code"], "recall": true } },
+    { "feedback": { "signal": "comment", "text": "again, keep it shorter please, bullet points work best" } },
+    { "expect": { "activeHints": 2, "reinforcements": { "short": 1, "bullet": 1 }, "maturity": { "short": "captured" } } },
+
+    { "note": "A consolidation pass promotes a reinforced hint from captured to consolidated (explicit half-life 90 d → 180 d)." },
+    { "consolidate": true },
+    { "expect": { "maturity": { "short": "consolidated", "bullet": "consolidated" }, "hintStatus": { "short": "active" } } },
+
+    { "note": "Contradiction: the user now wants detail. Scripted proposal on the same slot (format.length) with a new value → the old hint is superseded." },
+    { "turn": { "user": "Walk me through how the V8 garbage collector works.", "assistant": "Briefly: ...", "agentsUsed": ["assist_code"], "recall": true } },
+    {
+      "feedback": {
+        "signal": "correction",
+        "text": "actually, give me detailed answers",
+        "proposal": {
+          "ops": [
+            {
+              "op": "add_hint",
+              "nodePath": "/",
+              "slot": "format.length",
+              "value": "detailed",
+              "text": "Prefers detailed explanations with the reasoning shown.",
+              "kind": "style",
+              "lane": "responseStyle",
+              "scope": "global",
+              "priority": 70,
+              "confidence": 0.9,
+              "rationale": "the user corrected the short-answer preference"
+            }
+          ],
+          "notes": "scripted for the simulator"
+        }
+      }
+    },
+    { "expect": { "activeHints": 2, "hintStatus": { "Keeps answers short": "superseded", "detailed explanations": "active", "bullet": "active" } } },
+
+    { "note": "An inferred hint from a plain turn (no feedback): 'i usually' trips the triage gate and the offline heuristic reads 'in Python' → code.language=python, source inferred, half-life 30 d." },
+    { "turn": { "user": "I usually write in Python — can you show me how to memoize this function?", "assistant": "Sure, with functools.lru_cache...", "agentsUsed": ["assist_code"] } },
+    { "expect": { "activeHints": 3, "hintStatus": { "Python": "active" }, "maturity": { "Python": "captured" } } },
+
+    { "note": "45 days later the inferred hint has decayed to ~0.35 of its weight — visible, but still above the 0.15 retirement floor." },
+    { "advanceDays": 45 },
+    { "maintain": true },
+    { "expect": { "hintStatus": { "Python": "active", "detailed explanations": "active" }, "decay": { "Python": { "below": 0.4, "above": 0.3 } } } },
+
+    { "note": "Another 45 days (90 total): inferred/captured weight ≈ 0.125 < 0.15 → retired (decayed). The explicit hints, with 90 d and 180 d half-lives, survive." },
+    { "advanceDays": 45 },
+    { "maintain": true },
+    { "expect": { "hintStatus": { "Python": "retired", "detailed explanations": "active", "bullet": "active" }, "activeHints": 2 } },
+
+    { "note": "Recall renders what survived: detail + bullets, never the superseded short-answer hint." },
+    { "recall": { "text": "How does async/await work in TypeScript code under the hood?", "agent": "assist_code", "expect": { "category": "assist_code", "includes": ["detailed explanations", "bullet"], "excludes": ["short and to the point", "Python"], "minHints": 2, "maxHints": 2 } } }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "name": "@mosphere/wisdom-graph",
+  "version": "0.0.1",
+  "description": "Framework for building a memory store on a Wisdom Graph: a schema-validated knowledge graph that separates enterprise wisdom from hand-written prompts. The system prompt becomes a compiled artifact and a human-approved charter is assembled per query from the graph.",
+  "keywords": [
+    "knowledge-graph",
+    "memory",
+    "agent",
+    "llm",
+    "system-prompt",
+    "charter",
+    "governance",
+    "schema",
+    "wisdom"
+  ],
+  "license": "MIT",
+  "author": "Erik Koning",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Erik-Koning/WisdomGraph.git",
+    "directory": "packages/wisdom-graph"
+  },
+  "homepage": "https://github.com/Erik-Koning/WisdomGraph#readme",
+  "bugs": {
+    "url": "https://github.com/Erik-Koning/WisdomGraph/issues"
+  },
+  "type": "module",
+  "main": "./dist/wisdom-graph.cjs",
+  "module": "./dist/wisdom-graph.js",
+  "types": "./dist/wisdom-graph.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/wisdom-graph.d.ts",
+        "default": "./dist/wisdom-graph.js"
+      },
+      "require": {
+        "types": "./dist/wisdom-graph.d.cts",
+        "default": "./dist/wisdom-graph.cjs"
+      }
+    },
+    "./postgres": {
+      "import": {
+        "types": "./dist/postgres.d.ts",
+        "default": "./dist/postgres.js"
+      },
+      "require": {
+        "types": "./dist/postgres.d.cts",
+        "default": "./dist/postgres.cjs"
+      }
+    },
+    "./langgraph": {
+      "import": {
+        "types": "./dist/langgraph.d.ts",
+        "default": "./dist/langgraph.js"
+      },
+      "require": {
+        "types": "./dist/langgraph.d.cts",
+        "default": "./dist/langgraph.cjs"
+      }
+    },
+    "./testing": {
+      "import": {
+        "types": "./dist/testing.d.ts",
+        "default": "./dist/testing.js"
+      },
+      "require": {
+        "types": "./dist/testing.d.cts",
+        "default": "./dist/testing.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "postgres": [
+        "./dist/postgres.d.ts"
+      ],
+      "langgraph": [
+        "./dist/langgraph.d.ts"
+      ],
+      "testing": [
+        "./dist/testing.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build && npm run build:dts-cts && npm run build:check",
+    "build:dts-cts": "node -e \"for (const f of ['wisdom-graph','postgres','langgraph','testing']) require('fs').copyFileSync('dist/'+f+'.d.ts','dist/'+f+'.d.cts')\"",
+    "build:check": "node scripts/check-dts.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build",
+    "prepack": "cp ../../README.md ../../LICENSE .",
+    "postpack": "rm -f README.md LICENSE"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "typescript": "^5.6.3",
+    "vite": "^7.3.6",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.7"
+  }
+}

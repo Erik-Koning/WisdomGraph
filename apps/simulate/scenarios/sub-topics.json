@@ -1,0 +1,116 @@
+{
+  "name": "sub-topics",
+  "$comment": "Scripted proposals create a level-2 node under a category (create_node with an inline hint), then set_property and add_hint on it. Recall about the sub-topic classifies into it and renders its category-scoped hint; an unrelated recall does not.",
+  "startAt": "2026-03-01T10:00:00Z",
+  "steps": [
+    { "note": "First turn: the extractor decides testing preferences deserve their own node under /assist_code and creates it with one hint." },
+    {
+      "turn": {
+        "user": "Which test framework should I use for this TypeScript library? I prefer vitest over jest.",
+        "assistant": "Vitest is a good fit for a TypeScript library...",
+        "agentsUsed": ["assist_code"],
+        "proposal": {
+          "ops": [
+            {
+              "op": "create_node",
+              "parentPath": "/assist_code",
+              "slug": "testing",
+              "title": "Testing",
+              "description": "How tests are written and run: frameworks, coverage targets, mocking and fixtures.",
+              "keywords": ["test", "tests", "testing", "vitest", "jest", "coverage", "mock", "fixture", "assert"],
+              "hints": [
+                {
+                  "slot": "testing.framework",
+                  "value": "vitest",
+                  "text": "Prefers Vitest over Jest for unit tests.",
+                  "kind": "preference",
+                  "lane": "agent",
+                  "scope": "category",
+                  "priority": 70,
+                  "confidence": 0.85,
+                  "rationale": "stated directly in the question"
+                }
+              ],
+              "rationale": "testing preferences recur and no node holds them"
+            }
+          ],
+          "notes": "scripted for the simulator"
+        }
+      }
+    },
+    { "expect": { "nodes": 7, "nodeExists": "/assist_code/testing", "activeHints": 1, "hintStatus": { "Vitest": "active" } } },
+
+    { "note": "A later turn adds structured knowledge (set_property) and a second hint to the sub-node." },
+    {
+      "turn": {
+        "user": "Please keep tests in arrange-act-assert form, one assertion per case, and aim for 80% coverage.",
+        "assistant": "Noted — arrange-act-assert with a single assertion each...",
+        "agentsUsed": ["assist_code"],
+        "proposal": {
+          "ops": [
+            { "op": "set_property", "nodePath": "/assist_code/testing", "key": "coverage.target", "value": "80%" },
+            {
+              "op": "add_hint",
+              "nodePath": "/assist_code/testing",
+              "slot": "testing.style",
+              "value": "arrange-act-assert",
+              "text": "Writes tests in arrange-act-assert form with one assertion per case.",
+              "kind": "style",
+              "lane": "agent",
+              "scope": "category",
+              "priority": 65,
+              "confidence": 0.9,
+              "rationale": "explicit instruction"
+            }
+          ]
+        }
+      }
+    },
+    { "expect": { "activeHints": 2, "properties": { "/assist_code/testing": { "coverage.target": "80%" } }, "hintStatus": { "arrange-act-assert": "active" } } },
+
+    { "note": "A question about the sub-topic classifies into /assist_code/testing; both category-scoped hints render in the assist_code preamble." },
+    {
+      "recall": {
+        "text": "How do I mock a module in a vitest test?",
+        "agent": "assist_code",
+        "expect": { "category": "assist_code", "includes": ["Vitest", "arrange-act-assert"], "minHints": 2 }
+      }
+    },
+
+    { "note": "An unrelated question (writing) does not carry the testing hints: category scope keeps them out of other topics." },
+    {
+      "recall": {
+        "text": "Draft a short email to my landlord about the broken heater.",
+        "agent": "assist_writing",
+        "expect": { "category": "assist_writing", "excludes": ["Vitest", "arrange-act-assert"], "maxHints": 0 }
+      }
+    },
+
+    { "note": "A restatement of the framework preference on the sub-node reinforces the existing hint instead of adding a second one." },
+    {
+      "turn": {
+        "user": "Reminder: I prefer vitest for all my tests.",
+        "assistant": "Understood.",
+        "agentsUsed": ["assist_code"],
+        "proposal": {
+          "ops": [
+            {
+              "op": "add_hint",
+              "nodePath": "/assist_code/testing",
+              "slot": "testing.framework",
+              "value": "vitest",
+              "text": "Prefers Vitest for unit tests.",
+              "kind": "preference",
+              "lane": "agent",
+              "scope": "category",
+              "priority": 70,
+              "confidence": 0.9,
+              "rationale": "restated"
+            }
+          ]
+        }
+      }
+    },
+    { "expect": { "activeHints": 2, "reinforcements": { "Vitest": 1 }, "nodeExists": "/assist_code/testing" } }
+  ]
+}

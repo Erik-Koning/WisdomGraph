@@ -1,0 +1,402 @@
+{
+  "_readme": "Work breakdown accompanying docs/spec.md (\u00a713). Each module is one implementer task; acceptance criteria are the definition of done. Paths are relative to packages/wisdom-graph/.",
+  "runtimeDependencies": [],
+  "modules": [
+    {
+      "key": "core-foundation",
+      "description": "The vocabulary and the validators everything else builds on: all types from spec \u00a72 and \u00a77.1, port interfaces with noop implementations, PolicyConfig with defaultPolicy and deep merge, id helpers (randomUUID, fnv1a32, deterministicId), the hand-rolled Validator<T> combinators and one validator per boundary shape, path algebra, the token estimator, and the port fakes (FakeLlm, FakeEmbedding, FakeClock, CollectingLogger, CapturingTracer) that later modules test with. No behaviour beyond validation lives here.",
+      "files": [
+        "src/core/types.ts",
+        "src/core/ports.ts",
+        "src/core/policy.ts",
+        "src/core/ids.ts",
+        "src/core/schema/validate.ts",
+        "src/core/schema/hint.ts",
+        "src/core/schema/node.ts",
+        "src/core/schema/event.ts",
+        "src/core/schema/request.ts",
+        "src/core/schema/proposal.ts",
+        "src/core/graph/paths.ts",
+        "src/core/text/tokens.ts",
+        "src/core/index.ts",
+        "src/testing/fakes.ts",
+        "src/testing/index.ts",
+        "src/core/schema/validate.test.ts",
+        "src/core/schema/boundaries.test.ts",
+        "src/core/ids.test.ts",
+        "src/core/graph/paths.test.ts",
+        "src/core/policy.test.ts",
+        "src/testing/fakes.test.ts"
+      ],
+      "dependsOn": [],
+      "specSections": [
+        "2. Public API",
+        "3. Data model",
+        "7. Store port and Postgres",
+        "11. Test strategy"
+      ],
+      "acceptance": [
+        "Every combinator (obj/str/num/int/bool/oneOf/arr/opt/nullable/union/record/json/isoDate) has valid and invalid cases with JSON-pointer issue paths; strict objects reject unknown keys; validators never throw.",
+        "validators.hint, hintRecord, node, event, recallRequest, proposal enforce every rule in the \u00a73.5 table (slug, path depth, slot pattern, priority/confidence ranges, lane\u00d7kind matrix, agent/clientId presence, properties caps, reserved keys) with a test per rule.",
+        "deterministicId is stable for equal inputs and differs across tenant/subject/event/opIndex; newId uses globalThis.crypto.randomUUID.",
+        "defaultPolicy matches the values listed in \u00a72.7 and mergePolicy deep-merges partial overrides without mutating the default.",
+        "FakeLlm matches by purpose/regex, supports delayMs/hang/throws and records calls; FakeEmbedding is deterministic and L2-normalised; FakeClock tick/advanceDays work.",
+        "core/isolation.test.ts and the existing api-surface test still pass (surface list updated for new core exports)."
+      ]
+    },
+    {
+      "key": "text-safety",
+      "description": "Text normalisation and the single sanitisation gate: NFKC/tokenise/stopwords/stemLite/jaccard helpers, the injection pattern families and allowed-opener list as data plus compiled regexes, sanitizeStatement with its ordered steps (normalise, strip structure, reject injection families, review on deny-list, canonical form, caps), sanitizeInputText for evidence going into prompts, delimiter escaping, and the injection/benign corpora fixtures.",
+      "files": [
+        "src/core/text/normalize.ts",
+        "src/core/text/patterns.ts",
+        "src/core/text/sanitize.ts",
+        "src/testing/fixtures.ts",
+        "src/core/text/normalize.test.ts",
+        "src/core/text/sanitize.test.ts",
+        "src/core/text/patterns.test.ts"
+      ],
+      "dependsOn": [
+        "core-foundation"
+      ],
+      "specSections": [
+        "9. Safety",
+        "3. Data model",
+        "11. Test strategy"
+      ],
+      "acceptance": [
+        "Every entry of injectionCorpus() (\u2265 50) is rejected with a family reason code; every entry of benignCorpus() (\u2265 50) passes with text unchanged modulo whitespace.",
+        "Deny-list terms (access, permission, token, client id, \u2026) yield ok:true with review:true and a reviewReason rather than rejection.",
+        "Statements without an allowed third-person opener, with second/first-person pronouns, or with quotation marks are rejected with not-canonical/quotation reasons; 201-char input is rejected too-long, not truncated.",
+        "Zero-width, bidi override and control characters are stripped; role markers, code fences, tags, URLs and base64 runs are removed; << and >> are escaped.",
+        "sanitizeInputText wraps evidence in <<user-text>> delimiters and applies only normalise+strip steps.",
+        "normalize.tokenize/stemLite/jaccard have table tests including NFKC folding and stopword removal."
+      ]
+    },
+    {
+      "key": "memory-store",
+      "description": "The reference StorePort: MemoryStore over Maps with atomic applyBatch (clone-apply-swap under a version check), structuredClone reads, timestamp leases, tombstones, slot aliases, consolidation counter, latencyMs/failNext hooks, and snapshot()/load(). Also the shared storeContractTests suite that encodes the \u00a77.1 contract, the FaultyStore wrapper, and the advisorCategories()/advisorFixture() fixtures.",
+      "files": [
+        "src/core/store/memory.ts",
+        "src/testing/store-contract.ts",
+        "src/testing/fakes.ts",
+        "src/testing/fixtures.ts",
+        "src/core/store/memory.test.ts",
+        "src/testing/store-contract.test.ts",
+        "src/testing/fixtures.test.ts"
+      ],
+      "dependsOn": [
+        "core-foundation",
+        "text-safety"
+      ],
+      "specSections": [
+        "7. Store port and Postgres",
+        "3. Data model",
+        "11. Test strategy"
+      ],
+      "acceptance": [
+        "storeContractTests('memory', \u2026) passes: claimEvent idempotent per (tenant,id); applyBatch all-or-nothing and VersionConflictError leaves nothing applied; tombstoned upsertHint skipped; loadSnapshot returns copies filtered by statuses and null for unknown subjects; leaseEvents respects lease_until/retry_at and never double-leases; deleteSubject leaves zero rows; consolidationCounter increment/reset.",
+        "Every StoreOp variant (upsertNode, patchNode, upsertHint, patchHint with add-counters and provenance appends, setSlotAlias, addTombstone, consolidationCounter, audit) is exercised.",
+        "latencyMs delays every method and failNext(err) makes exactly the next call reject with err.",
+        "FaultyStore throwOn/hangOn/corruptRows behave as specified and hangOn respects the AbortSignal.",
+        "advisorFixture() validates against validators.node/hintRecord, contains the eight consult_* categories, 6 sub-nodes, ~30 hints spanning scopes/lanes/sources/maturities, one approved, one pending, one superseded chain and client-scoped hints; snapshot()/load() round-trips it."
+      ]
+    },
+    {
+      "key": "snapshot-classifier",
+      "description": "Turn store data into an immutable SubjectSnapshot and classify queries against it without an LLM: seed materialisation of root and category nodes with deterministic ids, compileSnapshot (row re-validation and re-sanitisation, virtual category overlay, slot canonicalisation, HintRecord\u2192Hint projection, inverted keyword index), the classify() scoring function with field weights, ancestor credit, continuity/agent-mention/category-hint bonuses and confidence, the seed-pattern safety check, cosine/rerankByEmbedding, and the labelledQueries fixture.",
+      "files": [
+        "src/core/graph/seed.ts",
+        "src/core/graph/snapshot.ts",
+        "src/core/classify/index.ts",
+        "src/core/classify/embedding.ts",
+        "src/testing/fixtures.ts",
+        "src/core/graph/seed.test.ts",
+        "src/core/graph/snapshot.test.ts",
+        "src/core/classify/classify.test.ts",
+        "src/core/classify/embedding.test.ts"
+      ],
+      "dependsOn": [
+        "core-foundation",
+        "text-safety",
+        "memory-store"
+      ],
+      "specSections": [
+        "3. Data model",
+        "4. Recall pipeline",
+        "9. Safety",
+        "11. Test strategy"
+      ],
+      "acceptance": [
+        "compileSnapshot drops and logs rows that fail validation, sanitisation or the label gate (recorded as invalid-row; at most MAX_LOGGED_DROPS logged per row, then one summary line), overlays configured categories as virtual nodes when missing, canonicalises slots through aliases, and builds the index in \u2264 5 ms for 200 nodes / 500 hints.",
+        "Seeded node ids are deterministic per (tenant, subject, path); root and level-1 nodes are locked.",
+        "classify() reaches \u2265 90% category accuracy on labelledQueries() (\u2265 40 rows) over advisorFixture(); returns 'direct' below minConfidence; nodePaths \u2264 3 with secondaryRatio; continuity bonus breaks a tie; a seed pattern hit dominates keywords; method is reported.",
+        "Invalid seed patterns (nested quantifiers, back-references, > 200 chars) throw TypeError at construction.",
+        "rerankByEmbedding blends cosine with keyword scores by embedBlend and leaves the keyword result untouched when embeddings are missing."
+      ]
+    },
+    {
+      "key": "charter-assembly",
+      "description": "The pure read-side policy and assembly: conflict comparator and resolveConflicts, decayWeight/effectiveScore/promotion/retirement predicates, collectCandidates (status/approval/approvedOnly/scope filters, always-candidate agent rule, relevance, shared subject), assembleCharter (score, resolve, dedupe, lane bucketing with fan-out and style mirroring, per-lane/total token caps, suppressed/dropped records, approvalMix), and compileCharter with the three lane renderers and the fixed delimited advisory format.",
+      "files": [
+        "src/core/policy/conflict.ts",
+        "src/core/policy/decay.ts",
+        "src/core/recall/select.ts",
+        "src/core/recall/charter.ts",
+        "src/core/recall/compile.ts",
+        "src/core/policy/conflict.test.ts",
+        "src/core/policy/decay.test.ts",
+        "src/core/recall/select.test.ts",
+        "src/core/recall/charter.test.ts",
+        "src/core/recall/compile.test.ts"
+      ],
+      "dependsOn": [
+        "core-foundation",
+        "text-safety",
+        "snapshot-classifier"
+      ],
+      "specSections": [
+        "4. Recall pipeline",
+        "6. Conflict and decay policy",
+        "8. LangChain / LangGraph / deep-agents integration",
+        "9. Safety"
+      ],
+      "acceptance": [
+        "Precedence table tests cover every rule pair (approval, scope incl. deeper category, source, recency, score) and the shared-subject rule; losers appear in charter.suppressed with the winning id and rule.",
+        "Decay maths: weight 0.5 at exactly one half-life for each maturity\u00d7source, approved hints weight 1, promotion and retirement predicates match \u00a76.2 thresholds at a FakeClock.",
+        "Agent-scoped hints for a configured agent survive a wrong classification at relevance alwaysAgent; client hints only appear when clientId matches; approvedOnly filters to approved; pending/needsReview excluded unless includePending.",
+        "Mirroring on/off: responseStyle hints appear in agentHints for each topic agent when enabled and count once toward totalTokens; 1,000 random charters never exceed lane, total, or maxHintsPerLane caps; overflow lands in dropped:'budget'; Jaccard duplicates in dropped:'duplicate'.",
+        "compileCharter golden strings for each lane match \u00a78.3 exactly, return '' on empty, escape delimiters, produce a stable hash, and honour includeIds/maxTokens; compileAgentPreamble falls back to responseStyle for an agent with no bucket."
+      ]
+    },
+    {
+      "key": "recall-engine",
+      "description": "The never-reject recall pipeline and the engine skeleton: linkSignals/Deadline/settleWithin, SnapshotCache with TTL, stale-while-revalidate, negative cache, in-flight dedupe and continuation of a load that lost the race, recall() and refine() per \u00a74, explain() with tree/why/dry-run trace, and createWisdomGraph wiring recall/refine/explain/forget/approve/compile/invalidate/warm/stats plus createNoopWisdomGraph (ingest is stubbed to return {status:'rejected', reason:'not-wired'} until the next module).",
+      "files": [
+        "src/core/recall/deadline.ts",
+        "src/core/recall/cache.ts",
+        "src/core/recall/recall.ts",
+        "src/core/recall/explain.ts",
+        "src/core/engine.ts",
+        "src/index.ts",
+        "src/core/recall/deadline.test.ts",
+        "src/core/recall/cache.test.ts",
+        "src/core/recall/recall.test.ts",
+        "src/core/recall/explain.test.ts",
+        "src/core/engine.test.ts",
+        "src/api-surface.test.ts"
+      ],
+      "dependsOn": [
+        "memory-store",
+        "snapshot-classifier",
+        "charter-assembly"
+      ],
+      "specSections": [
+        "4. Recall pipeline",
+        "10. Observability and governance",
+        "2. Public API",
+        "11. Test strategy"
+      ],
+      "acceptance": [
+        "With MemoryStore latencyMs 500 and budgetMs 150, recall resolves within 160 ms with meta.status 'empty' reason 'store-timeout', and a subsequent recall is a cache hit; pre-aborted signal \u2192 'aborted'; FaultyStore throwing \u2192 'store-error' and a logged error; budgetMs 0 still serves a cache hit.",
+        "1,000 randomised runs (random faults, budgets, aborts, invalid requests) never reject and always return a deep-frozen object that JSON.stringify round-trips with no promise or function fields.",
+        "A spy on every StorePort write method proves recall issues zero writes; a cache hit issues zero store calls; stale entries are served immediately and refreshed in the background; unknown subjects are negative-cached and still classify against virtual categories.",
+        "refine() re-ranks with FakeEmbedding when refine:true and budget remains, and returns the input Recall unchanged on any failure or timeout.",
+        "explain() returns the nested tree, why strings, pending/retired lists, audit tail and, with text, a dry-run trace whose recall equals a real recall on the same snapshot; forget(hint) leaves no row and adds a tombstone; forget(subject) leaves zero rows; approve retires the superseded hint and writes an audit row.",
+        "Spans wisdom.recall(.snapshot/.classify/.assemble) and the recall.done log carry the \u00a710 attributes; createNoopWisdomGraph satisfies WisdomGraph with empty results."
+      ]
+    },
+    {
+      "key": "ingest-ledger",
+      "description": "The durable event lifecycle without any LLM: admission (validate, cap text, claimEvent, per-subject bounded queue with global concurrency, inline mode, waitFor), processing with leases, backoff retries, failed state and drain(), the TurnEvent path (applied-hint counters, agentsUsed learning, keyword refresh) and triage gate, the FeedbackEvent path (anchor lookup with delayed requeue, targeting, up/down arithmetic and thresholds), audit rows inside the batch, cache invalidation, and engine wiring of ingest/flush/close/maintenance.drain.",
+      "files": [
+        "src/core/ingest/queue.ts",
+        "src/core/ingest/ingest.ts",
+        "src/core/ingest/triage.ts",
+        "src/core/ingest/feedback.ts",
+        "src/core/engine.ts",
+        "src/core/ingest/queue.test.ts",
+        "src/core/ingest/ingest.test.ts",
+        "src/core/ingest/triage.test.ts",
+        "src/core/ingest/feedback.test.ts"
+      ],
+      "dependsOn": [
+        "recall-engine"
+      ],
+      "specSections": [
+        "5. Ingest pipeline",
+        "6. Conflict and decay policy",
+        "7. Store port and Postgres",
+        "10. Observability and governance"
+      ],
+      "acceptance": [
+        "The same event id ingested twice yields one row, one processing, and a 'duplicate' receipt; ingest never rejects for invalid input, store failure, or queue overflow (receipts rejected/failed, logged).",
+        "waitFor:'processed' resolves after the job; fake-timer tests show the 1s/4s/16s backoff then status 'failed' with an audit entry; drain() re-leases pending/failed rows and two engines on one store never process the same event, including a row whose batch lease lapsed behind slow neighbours or whose model call outlasted a fixed minute (leases are sized to the attempt, renewed before the model step and held per row in drain()).",
+        "A TurnEvent bumps applied/lastAppliedAt exactly for existing appliedHintIds, adds agentsUsed to the classified node and its category, refreshes \u2264 3 keywords, and calls no LLM when the triage gate misses; gate tables cover user-side and assistant-side regexes plus a corpus of preferences laid out inside ordinary queries (all captured) and plain questions that share their words (none captured), sampling with a seeded sampler, and extract:'force'/'skip'.",
+        "Feedback before its turn sets retry_at and retries feedbackAnchorRetries times before proceeding unanchored; up adds +0.05 and reinforcements; down multiplies by downFactor per source, increments contradictions, retires inferred below 0.3 and moves explicit to pending+needsReview; target agent:x / response / tool:* select exactly the specified hints.",
+        "Every processed event invalidates the subject's cache entry and writes ingest.processed logs and wisdom.ingest spans; flush() drains the queue and close() stops timers."
+      ]
+    },
+    {
+      "key": "extraction-organiser",
+      "description": "The LLM protocol and the well-organised rules: buildOutline (root globals, level-1 lines, classified path expanded with description/properties/hints, siblings, applied hints, token cap), the extract@1 prompt builder with vocabulary and slots, runExtraction (json mode, timeout, tolerant parse, one retry, proposal persisted on the event row and reused on replay), validateProposal with structural/referential/policy gates and the update-over-add, add-over-create, supersede/challenger rewrites, deterministic ids, source set by the library, and the feedback-driven prompt bias and target constraints.",
+      "files": [
+        "src/core/graph/outline.ts",
+        "src/core/ingest/prompts.ts",
+        "src/core/ingest/extract.ts",
+        "src/core/ingest/organiser.ts",
+        "src/core/ingest/ingest.ts",
+        "src/core/graph/outline.test.ts",
+        "src/core/ingest/prompts.test.ts",
+        "src/core/ingest/extract.test.ts",
+        "src/core/ingest/organiser.test.ts",
+        "src/core/ingest/replay.test.ts"
+      ],
+      "dependsOn": [
+        "ingest-ledger"
+      ],
+      "specSections": [
+        "5. Ingest pipeline",
+        "6. Conflict and decay policy",
+        "9. Safety",
+        "3. Data model"
+      ],
+      "acceptance": [
+        "The outline stays under ~1,500 tokens on a 200-node fixture by eliding deepest nodes first and always includes the classified path's description, properties and hint lines in the specified format plus the known slots.",
+        "Malformed JSON from FakeLlm triggers exactly one retry with the issues echoed, then the event completes with result.rejected 'unparseable'; a stored proposal on the row means FakeLlm is called zero times on replay.",
+        "Gate tests: hallucinated hintId/nodePath, depth > 4, > 12 siblings, locked-node create/move/merge/retire, reserved property keys, lane\u00d7kind mismatch, missing agent for scope agent, consolidation-only ops in extraction, inferred retiring explicit \u2014 all rejected with reason codes; slug a near-duplicate of a sibling (length-aware: exact or plural under 6 chars, one edit at 6\u20137, Levenshtein 2 from 8) or title Jaccard \u2265 0.6 of a sibling is rewritten to add_hint on that sibling, while rrsp/resp and bonds/funds create side by side; create_node with a rationale and one hint is accepted regardless of parent size.",
+        "Rewrites: same slot+value \u2192 reinforce (counters, lastReinforcedAt, provenance appended); same slot, new value with rank \u2265 old and old not approved \u2192 supersede with both links; inferred vs explicit/approved \u2192 pending challenger and contradictions +1; sanitizer review \u2192 pending+needsReview; injection hit in a statement or in any label (title, description, keywords, slot value, property key/value) \u2192 whole op rejected and audited.",
+        "Applying the same event twice (simulated crash between applyBatch and updateEvent) produces a store identical to applying it once, thanks to deterministic ids and upserts."
+      ]
+    },
+    {
+      "key": "consolidation-maintenance",
+      "description": "The two slower timescales: the rule-based consolidate pass (fold supersession chains, merge near-duplicates with unioned provenance, captured\u2192consolidated promotion, low-confidence retirement, keyword refresh, empty-node GC), the maintain pass (decay retirement, consolidated\u2192established promotion, contradiction handling, node GC, re-embedding via EmbeddingPort, retention scrub/purge), the consolidate@1 LLM pass run as a kind:'consolidate' ledger event with merge_hints/move_hint/split_node/merge_nodes/alias_slot semantics validated by the same organiser, triggering by consolidateEveryEvents and node overflow, and engine wiring of maintenance.consolidate/maintain.",
+      "files": [
+        "src/core/ingest/consolidate.ts",
+        "src/core/ingest/maintain.ts",
+        "src/core/ingest/prompts.ts",
+        "src/core/ingest/organiser.ts",
+        "src/core/ingest/ingest.ts",
+        "src/core/engine.ts",
+        "src/core/ingest/consolidate.test.ts",
+        "src/core/ingest/maintain.test.ts",
+        "src/core/ingest/consolidate-llm.test.ts"
+      ],
+      "dependsOn": [
+        "extraction-organiser"
+      ],
+      "specSections": [
+        "5. Ingest pipeline",
+        "6. Conflict and decay policy",
+        "10. Observability and governance",
+        "3. Data model"
+      ],
+      "acceptance": [
+        "consolidate() merges Jaccard \u2265 0.8 duplicates on a node keeping the higher-confidence hint with unioned provenance and summed reinforcements, promotes captured hints meeting applied/reinforcement thresholds, retires inferred hints below retireConfidenceBelow, and resets the consolidation counter; it is triggered automatically after consolidateEveryEvents events.",
+        "maintain() at a FakeClock advanced past a half-life retires hints with decayWeight < 0.15 that were not applied within the half-life, promotes consolidated\u2192established per \u00a76.2, retires inferred hints at \u2265 3 contradictions and flags explicit ones, GCs empty unlocked nodes older than nodeGcDays, re-embeds changed nodes with FakeEmbedding, and scrubs/purges per retention settings; the report counts match.",
+        "The LLM consolidation pass runs only when LlmPort exists and a node is over cap or flagged, is persisted as a kind:'consolidate' event that leases/retries like any other, and its ops (merge_hints, move_hint, split_node, merge_nodes, alias_slot) produce the \u00a75.7 outcomes while locked-node targets are rejected.",
+        "alias_slot re-slots active hints and subsequent proposals using the alias are canonicalised.",
+        "approve/forget end-to-end with maintain: approved hints never decay or get superseded; forgotten ids are never resurrected by consolidation or replay."
+      ]
+    },
+    {
+      "key": "postgres-store",
+      "description": "The Postgres adapter behind the @mosphere/wisdom-graph/postgres subpath: PgClientLike/PgPoolLike structural types, parameterised SQL builders for every port method including the one-statement snapshot query, PostgresStore with transactions on a connect()ed client (TypeError without connect unless allowNonAtomic), optimistic version bump, null\u2194'' tenant mapping, row decoding through validators, optional pgvector mode with a single vector storage location, migrations(opts)/renderMigrationsSql/setup with advisory lock and kg_migrations, and both the recording-client unit tests and the env-gated integration suite.",
+      "files": [
+        "src/postgres/index.ts",
+        "src/postgres/client.ts",
+        "src/postgres/sql.ts",
+        "src/postgres/store.ts",
+        "src/postgres/migrations.ts",
+        "src/postgres/sql.test.ts",
+        "src/postgres/store.test.ts",
+        "src/postgres/migrations.test.ts",
+        "src/postgres/integration.test.ts",
+        "src/postgres/surface.test.ts"
+      ],
+      "dependsOn": [
+        "memory-store"
+      ],
+      "specSections": [
+        "7. Store port and Postgres",
+        "3. Data model",
+        "10. Observability and governance",
+        "11. Test strategy"
+      ],
+      "acceptance": [
+        "Every builder in sql.ts is asserted through a recording FakeSqlClient for statement text and params, and a sweep asserts that every emitted statement contains tenant_id.",
+        "PostgresStore.applyBatch brackets BEGIN/UPDATE kg_subjects \u2026 RETURNING version/ops/COMMIT on a connected client, always calls release(), rolls back and throws VersionConflictError on a zero-row version update, and the constructor throws TypeError when connect is missing unless allowNonAtomic (which logs one warning).",
+        "loadSnapshot is exactly one query returning subject/nodes/hints (and vectors only with pgvector) and maps to GraphSnapshotData with '' \u2192 null tenant; bad rows are left to compileSnapshot to drop.",
+        "migrations() returns ordered unique ids with 0002_pgvector only when requested and the vector dimension substituted; renderMigrationsSql matches a stored snapshot; all DDL is IF NOT EXISTS.",
+        "With WISDOM_PG_URL set, storeContractTests('postgres', \u2026) and setup() idempotency (second run applies nothing) pass against a real database; without it the suite is skipped and no network is touched."
+      ]
+    },
+    {
+      "key": "langgraph-adapter",
+      "description": "The @mosphere/wisdom-graph/langgraph subpath: structural MessageLike \u2192 NeutralMessage conversion (toNeutralMessage/toNeutralMessages/lastUserText), the AsyncLocalStorage recall scope with RecallHandle, startTurnRecall (base promise plus optional refined promise via graph.refine), laneA/laneB racing helpers with empty fallbacks, and the injection helpers systemPromptPrefix/nodePreamble/synthesizeSuffix/charterMessages/createPromptDecorator over compileCharter.",
+      "files": [
+        "src/langgraph/index.ts",
+        "src/langgraph/messages.ts",
+        "src/langgraph/scope.ts",
+        "src/langgraph/inject.ts",
+        "src/langgraph/messages.test.ts",
+        "src/langgraph/scope.test.ts",
+        "src/langgraph/inject.test.ts",
+        "src/langgraph/surface.test.ts"
+      ],
+      "dependsOn": [
+        "recall-engine"
+      ],
+      "specSections": [
+        "8. LangChain / LangGraph / deep-agents integration",
+        "4. Recall pipeline",
+        "2. Public API"
+      ],
+      "acceptance": [
+        "Hand-built objects shaped like HumanMessage, AIMessage (with tool_calls and content-part arrays), ToolMessage, SystemMessage and plain {role, content} convert correctly; unknown types return null and are skipped; last:N is honoured.",
+        "Inside scope.run, laneA(150) resolves emptyRecall when the base promise is slower than 150 ms while a later laneB() returns the real Recall; parallel callers and awaited chains all see the same handle; outside a scope both lanes return emptyRecall.",
+        "startTurnRecall with refine:true chains graph.refine and laneB prefers the refined result when settled, otherwise the base; neither promise ever rejects.",
+        "systemPromptPrefix/nodePreamble/synthesizeSuffix return '' for empty lanes and otherwise exactly the compileCharter output; nodePreamble for an agent without a bucket renders responseStyle; charterMessages returns plain system-role objects; createPromptDecorator appends after awaiting laneB.",
+        "No file under src/langgraph imports @langchain/* or langgraph; node:async_hooks is the only Node import."
+      ]
+    },
+    {
+      "key": "packaging-surface",
+      "description": "Make the four entry points real and pinned: package.json exports for ./postgres, ./langgraph, ./testing with import/require/types entries, four vite lib entries and the dts copy loop, engines >=22 retained, curated barrels for each subpath, surface pin tests per subpath and the updated root api-surface list, a no-LangChain/no-pg import sweep test, the example consumer importing every subpath, and README/spec cross-links.",
+      "files": [
+        "package.json",
+        "vite.config.ts",
+        "src/index.ts",
+        "src/core/index.ts",
+        "src/postgres/index.ts",
+        "src/langgraph/index.ts",
+        "src/testing/index.ts",
+        "src/api-surface.test.ts",
+        "src/postgres/surface.test.ts",
+        "src/langgraph/surface.test.ts",
+        "src/testing/surface.test.ts",
+        "src/no-framework-imports.test.ts",
+        "../../example/src/main.mjs",
+        "../../README.md"
+      ],
+      "dependsOn": [
+        "consolidation-maintenance",
+        "postgres-store",
+        "langgraph-adapter"
+      ],
+      "specSections": [
+        "1. Module layout",
+        "2. Public API",
+        "11. Test strategy",
+        "12. Risks and open questions"
+      ],
+      "acceptance": [
+        "npm run typecheck, npm test, npm run build and npm run dev all pass; dist contains wisdom-graph, postgres, langgraph and testing in .js/.cjs/.d.ts/.d.cts forms and the example script imports all four subpaths through the exports map.",
+        "Root and subpath surface tests pin exactly the runtime exports listed in spec \u00a72.8 and \u00a72.9; isolation.test.ts stays green; the import sweep finds no 'pg' or '@langchain' specifier anywhere under src.",
+        "package.json has zero dependencies and no peerDependencies; engines.node stays >=22.",
+        "README documents the four entry points, the two-lane usage snippet from \u00a78.2, and the migrations/setup story from \u00a77.3."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@wisdom-graph/simulate",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "smoke": "WISDOM_OFFLINE=1 tsx src/main.ts scenarios/preferences-evolve.json --days 400",
+    "all": "for f in scenarios/*.json; do WISDOM_OFFLINE=${WISDOM_OFFLINE:-1} tsx src/main.ts $f || exit 1; done"
+  },
+  "dependencies": {
+    "@wisdom-graph/harness": "*"
+  }
+}

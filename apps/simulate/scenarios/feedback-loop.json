@@ -1,0 +1,102 @@
+{
+  "name": "feedback-loop",
+  "$comment": "Thumbs-down ×3 on runs where hints were applied (recall: true makes appliedHintIds the real provenance). Each down multiplies confidence by downFactor (inferred 0.6, explicit 0.8) and counts a contradiction. Below 0.3: inferred → retired, explicit → pending + needsReview. At 3 contradictions: inferred → retired, explicit → needsReview but still active. Confidences are scripted so all three outcomes land on the third down: inferred 0.9 → 0.19 (retired), explicit 0.7 → 0.36 (needsReview, active), explicit 0.55 → 0.28 (pending).",
+  "startAt": "2026-02-01T08:00:00Z",
+  "steps": [
+    { "note": "An inferred hint: the extractor reads a habit out of a plain question (scripted; source = inferred because it comes from a turn)." },
+    {
+      "turn": {
+        "user": "What's the difference between let and const in JavaScript? Show me the code.",
+        "assistant": "const binds a name once; let allows reassignment...",
+        "agentsUsed": ["assist_code"],
+        "proposal": {
+          "ops": [
+            {
+              "op": "add_hint",
+              "nodePath": "/assist_code",
+              "slot": "code.examples",
+              "value": "always",
+              "text": "Includes a code example with every explanation.",
+              "kind": "preference",
+              "lane": "agent",
+              "scope": "global",
+              "priority": 60,
+              "confidence": 0.9,
+              "rationale": "the user asked for code in the question"
+            }
+          ]
+        }
+      }
+    },
+    { "note": "Two explicit hints from one feedback comment (scripted so the starting confidences are known: 0.7 and 0.55)." },
+    {
+      "feedback": {
+        "signal": "comment",
+        "text": "keep answers shorter, and no emoji",
+        "proposal": {
+          "ops": [
+            {
+              "op": "add_hint",
+              "nodePath": "/",
+              "slot": "format.length",
+              "value": "short",
+              "text": "Keeps answers short and to the point.",
+              "kind": "style",
+              "lane": "responseStyle",
+              "scope": "global",
+              "priority": 65,
+              "confidence": 0.7,
+              "rationale": "stated in feedback"
+            },
+            {
+              "op": "add_hint",
+              "nodePath": "/",
+              "slot": "format.emoji",
+              "value": "none",
+              "text": "Avoids emoji.",
+              "kind": "style",
+              "lane": "responseStyle",
+              "scope": "global",
+              "priority": 80,
+              "confidence": 0.55,
+              "rationale": "stated in feedback"
+            }
+          ]
+        }
+      }
+    },
+    { "expect": { "activeHints": 3, "hintStatus": { "code example": "active", "short": "active", "emoji": "active" } } },
+
+    { "note": "Round 1: all three hints are applied to the turn, then thumbs-down. inferred 0.90→0.54; short 0.70→0.56; emoji 0.55→0.44." },
+    { "turn": { "user": "How do I debounce a function in TypeScript code?", "assistant": "...", "agentsUsed": ["assist_code"], "recall": true } },
+    { "feedback": { "signal": "down" } },
+    { "expect": { "activeHints": 3, "needsReview": { "short": false, "emoji": false } } },
+
+    { "note": "Round 2: inferred 0.54→0.32; short 0.56→0.45; emoji 0.44→0.35. Everything still active." },
+    { "turn": { "user": "Why does this TypeScript compile error mention 'never'?", "assistant": "...", "agentsUsed": ["assist_code"], "recall": true } },
+    { "feedback": { "signal": "down" } },
+    { "expect": { "activeHints": 3, "hintStatus": { "code example": "active", "short": "active", "emoji": "active" } } },
+
+    { "note": "Round 3: inferred 0.32→0.19 < 0.30 → retired. short 0.45→0.36 with 3 contradictions → needsReview but still active. emoji 0.35→0.28 < 0.30 → pending + needsReview. Explicit hints are never retired by feedback." },
+    { "turn": { "user": "Refactor this function to avoid the nested callbacks in the code.", "assistant": "...", "agentsUsed": ["assist_code"], "recall": true } },
+    { "feedback": { "signal": "down" } },
+    {
+      "expect": {
+        "hintStatus": { "code example": "retired", "short": "active", "emoji": "pending" },
+        "needsReview": { "short": true, "emoji": true },
+        "activeHints": 1,
+        "pending": 1,
+        "retired": 1
+      }
+    },
+
+    { "note": "Neither flagged hint reaches a prompt: pending is not recalled, and an active hint marked needsReview is withheld until a human looks at it." },
+    { "recall": { "text": "How do I fix this npm install error?", "agent": "assist_code", "expect": { "excludes": ["short", "emoji", "code example"], "maxHints": 0 } } },
+
+    { "note": "A human reviews both: approval clears the review flag, returns the pending one to active, and makes them immune to further automatic demotion." },
+    { "approve": { "hintText": "short" } },
+    { "approve": { "hintText": "emoji" } },
+    { "expect": { "hintStatus": { "short": "active", "emoji": "active" }, "needsReview": { "short": false, "emoji": false }, "pending": 0, "activeHints": 2 } },
+    { "recall": { "text": "How do I fix this npm install error?", "agent": "assist_code", "expect": { "includes": ["short", "emoji"], "excludes": ["code example"], "minHints": 2, "maxHints": 2 } } }
+  ]
+}

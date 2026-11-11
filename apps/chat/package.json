@@ -1,0 +1,13 @@
+{
+  "name": "@wisdom-graph/chat",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "smoke": "rm -f ../../.wisdom/smoke-chat.json && WISDOM_OFFLINE=1 WISDOM_STORE_FILE=.wisdom/smoke-chat.json tsx src/main.ts --script scripts/smoke.txt"
+  },
+  "dependencies": {
+    "@wisdom-graph/harness": "*"
+  }
+}

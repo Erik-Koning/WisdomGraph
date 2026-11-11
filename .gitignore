@@ -1,0 +1,29 @@
+node_modules/
+dist/
+
+# Build artefacts and local scratch
+*.tgz
+.pkg-test/
+
+# Copied into the package by `prepack`, removed by `postpack`
+packages/*/README.md
+packages/*/LICENSE
+
+# Editor / tooling state
+.claude/
+.DS_Store
+*.log
+
+# Test-app state (persisted MemoryStore snapshots, scenario outputs)
+.wisdom/
+
+# Environment files hold secrets: never commit them. Examples stay tracked.
+.env
+.env*
+!.env.example
+!.env.sample
+!.env.template
+!.env.dist
+!.env.*.example
+!.env.*.sample
+!.env.*.template

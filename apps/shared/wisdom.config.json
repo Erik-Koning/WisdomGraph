@@ -1,0 +1,39 @@
+{
+  "$comment": "Edit freely: categories become the level-1 topic nodes (and the agent/handoff names). Names must be slugs. Restart the app after changes.",
+  "subjectId": "erik",
+  "clientId": null,
+  "sharedSubjectId": "org",
+  "categories": [
+    {
+      "name": "assist_code",
+      "title": "Coding",
+      "description": "Programming questions, code review, debugging, tooling, and architecture.",
+      "keywords": ["code", "bug", "typescript", "javascript", "python", "function", "test", "refactor", "compile", "api", "library", "git", "npm", "error", "stack"]
+    },
+    {
+      "name": "assist_writing",
+      "title": "Writing",
+      "description": "Drafting and editing emails, docs, posts, and other prose.",
+      "keywords": ["write", "draft", "email", "essay", "blog", "post", "edit", "proofread", "tone", "paragraph", "summary", "rewrite", "letter"]
+    },
+    {
+      "name": "assist_research",
+      "title": "Research",
+      "description": "Explaining concepts, comparing options, and gathering facts.",
+      "keywords": ["explain", "compare", "research", "what is", "how does", "difference", "history", "overview", "pros", "cons", "study", "paper"]
+    },
+    {
+      "name": "assist_planning",
+      "title": "Planning",
+      "description": "Schedules, trips, projects, to-do lists, and decisions.",
+      "keywords": ["plan", "schedule", "trip", "itinerary", "calendar", "deadline", "milestone", "todo", "roadmap", "week", "meeting", "goal"]
+    },
+    {
+      "name": "assist_finance",
+      "title": "Finance",
+      "description": "Budgets, investing, taxes, and money questions.",
+      "keywords": ["budget", "invest", "stock", "etf", "tax", "rrsp", "tfsa", "mortgage", "savings", "portfolio", "market", "interest", "dollar"]
+    }
+  ],
+  "policy": {}
+}

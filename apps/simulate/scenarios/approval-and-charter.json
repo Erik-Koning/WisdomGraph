@@ -1,0 +1,49 @@
+{
+  "name": "approval-and-charter",
+  "$comment": "Two explicit hints captured from one comment; a human approves one. approvedOnly recall renders only the approved hint; a normal recall renders both. 400 days later the approved hint is immune to decay while the other retires; forget() removes the approved one for good.",
+  "startAt": "2026-01-15T14:00:00Z",
+  "steps": [
+    { "turn": { "user": "What is the tax treatment of a TFSA withdrawal?", "assistant": "Withdrawals are not taxed... (disclaimer: this is not financial advice)", "agentsUsed": ["assist_finance"] } },
+    { "note": "One comment, two hints: disclaimers=omit (agent lane, constraint) and units=metric (responseStyle lane)." },
+    { "feedback": { "signal": "comment", "text": "no disclaimers please, and use metric units" } },
+    { "expect": { "activeHints": 2, "hintStatus": { "disclaimers": "active", "metric": "active" } } },
+
+    { "note": "A human approves the disclaimer rule. Approval never decays and is never auto-superseded." },
+    { "approve": { "hintText": "disclaimers" } },
+
+    { "note": "approvedOnly: the strictly human-approved charter carries only the approved hint." },
+    {
+      "recall": {
+        "text": "How much can I contribute to my RRSP this year?",
+        "agent": "assist_finance",
+        "approvedOnly": true,
+        "expect": { "category": "assist_finance", "includes": ["disclaimers"], "excludes": ["metric"], "minHints": 1, "maxHints": 1 }
+      }
+    },
+    { "note": "A normal recall mixes approved and auto hints." },
+    {
+      "recall": {
+        "text": "How much can I contribute to my RRSP this year?",
+        "agent": "assist_finance",
+        "expect": { "category": "assist_finance", "includes": ["disclaimers", "metric"], "minHints": 2, "maxHints": 2 }
+      }
+    },
+
+    { "note": "400 days pass. The auto hint (explicit, captured, 90 d half-life) decays to 0.5^4.4 ≈ 0.05 < 0.15 and retires; the approved one has no half-life." },
+    { "advanceDays": 400 },
+    { "maintain": true },
+    { "expect": { "hintStatus": { "disclaimers": "active", "metric": "retired" }, "activeHints": 1, "decay": { "disclaimers": { "above": 0.99 } } } },
+    {
+      "recall": {
+        "text": "Should I hold bonds or an ETF in my portfolio?",
+        "agent": "assist_finance",
+        "expect": { "includes": ["disclaimers"], "excludes": ["metric"], "maxHints": 1 }
+      }
+    },
+
+    { "note": "forget() hard-deletes the approved hint (approval does not protect against an explicit human forget)." },
+    { "forget": { "hintText": "disclaimers" } },
+    { "expect": { "hintStatus": { "disclaimers": "absent" }, "activeHints": 0 } },
+    { "recall": { "text": "Should I hold bonds or an ETF in my portfolio?", "agent": "assist_finance", "expect": { "excludes": ["disclaimers", "metric"], "maxHints": 0 } } }
+  ]
+}
