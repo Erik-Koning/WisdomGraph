@@ -8,7 +8,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
     "@mosphere/wisdom-graph": "*",
-    "pg": "^8.23.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1"

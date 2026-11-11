@@ -8,8 +8,8 @@
     "smoke": "WISDOM_OFFLINE=1 WISDOM_STORE_FILE=.wisdom/smoke-mcp.json tsx src/smoke.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@wisdom-graph/harness": "*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }

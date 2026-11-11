@@ -106,7 +106,7 @@
     "postpack": "rm -f README.md LICENSE"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.6.6",
     "typescript": "^5.6.3",
     "vite": "^7.3.6",
     "vite-plugin-dts": "^4.5.4",
