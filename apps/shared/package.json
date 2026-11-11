@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.125.0",
+    "@anthropic-ai/sdk": "^1.6.0",
     "@mosphere/wisdom-graph": "*",
     "pg": "^8.23.0"
   },
