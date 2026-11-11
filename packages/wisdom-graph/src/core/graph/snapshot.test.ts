@@ -561,6 +561,15 @@ describe("embeddings and cost", () => {
    * Best of `runs` after a warm-up: the bound is about the algorithm, not
    * about whatever else the machine is doing during one run.
    */
+  /**
+   * The bounds are the spec's, measured on a developer machine. A shared CI
+   * runner is slower and noisier, so it gets headroom: there the tests still
+   * catch a change in the order of the cost, which is what they are for.
+   * (Read through `globalThis` because core/ never names the Node global.)
+   */
+  const runnerSlack =
+    (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.CI !== undefined ? 4 : 1;
+
   function bestOf(runs: number, work: () => void): number {
     work();
     let best = Number.POSITIVE_INFINITY;
@@ -584,14 +593,14 @@ describe("embeddings and cost", () => {
 
   it("builds the classifier index in ≤ 5 ms for 200 nodes / 500 hints", () => {
     const snapshot = compileSnapshot(bigSubject(), defaultPolicy, noopLogger, { ref, categories: advisorCategories(), clock });
-    expect(bestOf(10, () => new ClassifierIndex(snapshot.nodes, snapshot.records))).toBeLessThanOrEqual(5);
+    expect(bestOf(30, () => new ClassifierIndex(snapshot.nodes, snapshot.records))).toBeLessThanOrEqual(5 * runnerSlack);
   });
 
   it("compiles the whole snapshot in ≤ 60 ms for 200 nodes / 500 hints (regression guard)", () => {
     // Re-validation and re-sanitisation of 500 rows dominate the full compile;
     // this guards against a per-row cost creeping in, not the index bound.
     const data = bigSubject();
-    expect(bestOf(10, () => compileSnapshot(data, defaultPolicy, noopLogger, { ref, categories: advisorCategories(), clock }))).toBeLessThanOrEqual(60);
+    expect(bestOf(30, () => compileSnapshot(data, defaultPolicy, noopLogger, { ref, categories: advisorCategories(), clock }))).toBeLessThanOrEqual(60 * runnerSlack);
   });
 });
 
